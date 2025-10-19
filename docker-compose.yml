@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sisp360_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crimes_porto_velho
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: sisp360_local_password
+      # Otimizações de performance
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_WORK_MEM: 16MB
+      POSTGRES_MAINTENANCE_WORK_MEM: 128MB
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persistir dados mesmo se container for removido
+      - postgres_data:/var/lib/postgresql/data
+      # Pasta para backups
+      - ./db/backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Configurações de performance
+    command: >
+      postgres
+      -c max_connections=100
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=128MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+
+volumes:
+  postgres_data:
+    driver: local

@@ -1,0 +1,2 @@
+# Esta pasta armazena backups do banco de dados
+# Os arquivos .sql e .sql.gz são ignorados pelo git (.gitignore)

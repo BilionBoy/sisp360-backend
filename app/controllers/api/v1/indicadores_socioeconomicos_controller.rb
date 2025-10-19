@@ -12,15 +12,30 @@ module Api
         records = IndicadorSocioeconomico.all
         records = apply_filters(records)
 
-        @pagy, @indicadores_socioeconomicos = pagy(records.order(:id_indicador))
+        limit = [params[:items].to_i, params[:per_page].to_i, 25].max
+        limit = [limit, 1000].min
 
-        render json: {
-          current_page: @pagy.page,
-          per_page: @pagy.limit,
-          total_pages: @pagy.pages,
-          total_count: @pagy.count,
-          indicadores_socioeconomicos: ActiveModelSerializers::SerializableResource.new(@indicadores_socioeconomicos)
-        }
+        cache_key = generate_cache_key(limit)
+
+        result = Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+          count = get_fast_count(records)
+
+          @pagy, @indicadores_socioeconomicos = pagy(
+            records.select(selected_fields).order(ano_referencia: :desc, id_indicador: :desc),
+            limit: limit,
+            count: count
+          )
+
+          {
+            current_page: @pagy.page,
+            per_page: @pagy.limit,
+            total_pages: @pagy.pages,
+            total_count: @pagy.count,
+            indicadores_socioeconomicos: @indicadores_socioeconomicos.as_json(only: selected_fields)
+          }
+        end
+
+        render json: result
       end
 
       # GET /api/v1/indicadores_socioeconomicos/:id
@@ -90,6 +105,37 @@ module Api
           records = records.where(field => params[field]) if params[field].present?
         end
         records
+      end
+
+      def selected_fields
+        # Exclude observacoes (TEXT field) from listing
+        %w[
+          id_indicador id_bairro ano_referencia indice_socioeconomico
+          renda_media_mensal taxa_desemprego percentual_ensino_superior
+          percentual_saneamento numero_estabelecimentos_comerciais
+          numero_escolas numero_postos_saude iluminacao_publica
+          presenca_policial distancia_centro_km qualidade_transporte_publico
+        ]
+      end
+
+      def get_fast_count(records)
+        filterable_fields = %w[id_bairro ano_referencia]
+        if params.keys.any? { |k| filterable_fields.include?(k) }
+          return records.count
+        end
+
+        Rails.cache.fetch("indicadores_socioeconomicos_total_count", expires_in: 1.hour) do
+          IndicadorSocioeconomico.connection.execute(
+            "SELECT reltuples::bigint AS estimate FROM pg_class WHERE relname='indicadores_socioeconomicos'"
+          )[0]["estimate"].to_i
+        end
+      end
+
+      def generate_cache_key(limit)
+        filter_params = params.to_unsafe_h.slice(
+          "id_bairro", "ano_referencia", "page"
+        )
+        "indicadores_socioeconomicos_index_#{filter_params.to_json}_limit_#{limit}"
       end
     end
   end

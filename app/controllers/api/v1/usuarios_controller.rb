@@ -12,15 +12,30 @@ module Api
         records = Usuario.all
         records = apply_filters(records)
 
-        @pagy, @usuarios = pagy(records.order(:id_usuario))
+        limit = [params[:items].to_i, params[:per_page].to_i, 25].max
+        limit = [limit, 1000].min
 
-        render json: {
-          current_page: @pagy.page,
-          per_page: @pagy.limit,
-          total_pages: @pagy.pages,
-          total_count: @pagy.count,
-          usuarios: ActiveModelSerializers::SerializableResource.new(@usuarios)
-        }
+        cache_key = generate_cache_key(limit)
+
+        result = Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+          count = get_fast_count(records)
+
+          @pagy, @usuarios = pagy(
+            records.select(selected_fields).order(:id_usuario),
+            limit: limit,
+            count: count
+          )
+
+          {
+            current_page: @pagy.page,
+            per_page: @pagy.limit,
+            total_pages: @pagy.pages,
+            total_count: @pagy.count,
+            usuarios: @usuarios.as_json(only: selected_fields)
+          }
+        end
+
+        render json: result
       end
 
       # GET /api/v1/usuarios/:id
@@ -84,6 +99,35 @@ module Api
           records = records.where(field => params[field]) if params[field].present?
         end
         records
+      end
+
+      def selected_fields
+        # SECURITY: NEVER return senha_hash in API responses
+        %w[
+          id_usuario nome_completo cpf email
+          tipo_usuario orgao cargo ativo
+          ultimo_acesso
+        ]
+      end
+
+      def get_fast_count(records)
+        filterable_fields = %w[cpf email tipo_usuario orgao ativo]
+        if params.keys.any? { |k| filterable_fields.include?(k) }
+          return records.count
+        end
+
+        Rails.cache.fetch("usuarios_total_count", expires_in: 1.hour) do
+          Usuario.connection.execute(
+            "SELECT reltuples::bigint AS estimate FROM pg_class WHERE relname='usuarios'"
+          )[0]["estimate"].to_i
+        end
+      end
+
+      def generate_cache_key(limit)
+        filter_params = params.to_unsafe_h.slice(
+          "cpf", "email", "tipo_usuario", "orgao", "ativo", "page"
+        )
+        "usuarios_index_#{filter_params.to_json}_limit_#{limit}"
       end
     end
   end

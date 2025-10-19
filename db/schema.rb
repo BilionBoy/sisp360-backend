@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_10_19_064218) do
+ActiveRecord::Schema[7.2].define(version: 2025_10_19_083830) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -199,7 +199,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_19_064218) do
     t.enum "gravidade", default: "Média", enum_type: "tipo_gravidade"
     t.boolean "ativo", default: true
     t.datetime "data_criacao", precision: nil, default: -> { "CURRENT_TIMESTAMP" }
+    t.index ["ativo"], name: "index_tipos_crime_on_ativo"
     t.index ["categoria"], name: "idx_tipos_crime_categoria"
+    t.index ["gravidade"], name: "index_tipos_crime_on_gravidade"
+    t.index ["nome_crime"], name: "index_tipos_crime_on_nome_crime"
     t.unique_constraint ["codigo_senasp"], name: "tipos_crime_codigo_senasp_key"
   end
 

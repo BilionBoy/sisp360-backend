@@ -1,8 +1,19 @@
 default: &default
   adapter: postgresql
   encoding: unicode
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 10 } %>  # Aumentado de 5 para 10
   url: <%= ENV["DATABASE_URL"] %>
+  # Otimizações para conexão remota
+  checkout_timeout: 5  # Timeout para obter conexão do pool (segundos)
+  reaping_frequency: 10  # Limpa conexões inativas a cada 10 segundos
+  connect_timeout: 2  # Timeout de conexão inicial (segundos)
+  # Prepared statements (melhora performance de queries repetidas)
+  prepared_statements: true
+  # Keep-alive para conexões remotas
+  keepalives: 1
+  keepalives_idle: 30
+  keepalives_interval: 10
+  keepalives_count: 3
 
 development:
   <<: *default

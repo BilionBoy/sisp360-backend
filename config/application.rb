@@ -15,5 +15,9 @@ module Apirails
     config.i18n.default_locale = :'pt-BR'                         # Configuração do idioma padrão
 
     config.api_only = true
+
+    # Compressão HTTP (Gzip) para reduzir tamanho das respostas
+    # Pode reduzir em 70-90% o tamanho do JSON
+    config.middleware.use Rack::Deflater
   end
 end

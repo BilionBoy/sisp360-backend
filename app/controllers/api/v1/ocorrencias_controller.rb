@@ -19,17 +19,31 @@ module Api
         limit = [params[:items].to_i, params[:per_page].to_i, 25].max
         limit = [limit, 1000].min  # Máximo de 1000 registros por página
 
-        # Usar contagem aproximada para melhor performance
-        # Para queries grandes, usa estatísticas do PostgreSQL
-        @pagy, @ocorrencias = pagy(records.order(:id_ocorrencia), limit: limit, count: get_fast_count(records))
+        # Gerar chave de cache baseada nos parâmetros da request
+        cache_key = generate_cache_key(limit)
 
-        render json: {
-          current_page: @pagy.page,
-          per_page: @pagy.limit,
-          total_pages: @pagy.pages,
-          total_count: @pagy.count,
-          ocorrencias: @ocorrencias.as_json
-        }
+        # Cache completo da resposta por 5 minutos (ajuste conforme necessário)
+        result = Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+          # Usar contagem aproximada para melhor performance
+          count = get_fast_count(records)
+
+          # OTIMIZAÇÃO: Buscar apenas campos essenciais (reduz transferência de rede)
+          pagy, ocorrencias = pagy(
+            records.select(selected_fields).order(:id_ocorrencia),
+            limit: limit,
+            count: count
+          )
+
+          {
+            current_page: pagy.page,
+            per_page: pagy.limit,
+            total_pages: pagy.pages,
+            total_count: pagy.count,
+            ocorrencias: ocorrencias.as_json
+          }
+        end
+
+        render json: result
       end
 
       # GET /api/v1/ocorrencias/:id
@@ -123,6 +137,32 @@ module Api
             "SELECT reltuples::bigint AS estimate FROM pg_class WHERE relname='ocorrencias'"
           )[0]["estimate"].to_i
         end
+      end
+
+      # Gera chave de cache baseada nos parâmetros da request
+      def generate_cache_key(limit)
+        filter_params = params.to_unsafe_h.slice(:numero_bo, :id_tipo_crime, :id_bairro, :data_ocorrencia, :periodo_dia, :status_ocorrencia, :page)
+        "ocorrencias/index/#{filter_params.to_query}/limit-#{limit}"
+      end
+
+      # Define campos a serem selecionados (reduz transferência de dados)
+      # Omite campos pesados que podem não ser necessários
+      def selected_fields
+        %w[
+          id_ocorrencia
+          numero_bo
+          id_tipo_crime
+          id_bairro
+          data_ocorrencia
+          hora_ocorrencia
+          dia_semana
+          periodo_dia
+          latitude_ocorrencia
+          longitude_ocorrencia
+          status_ocorrencia
+          vitimas
+          recuperado
+        ]
       end
     end
   end

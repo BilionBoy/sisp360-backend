@@ -31,3 +31,12 @@
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
+
+# Docker & Database
+/db/backups/*.sql
+/db/backups/*.sql.gz
+docker-compose.override.yml
+
+# PostgreSQL
+*.dump
+*.psql
