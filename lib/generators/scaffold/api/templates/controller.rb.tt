@@ -3,17 +3,36 @@
 module Api
   module V1
     class <%= class_name.pluralize %>Controller < ApplicationController
+      include Pagy::Backend
+
       before_action :set_<%= singular_table_name %>, only: [:show, :update, :destroy]
 
+      # GET /api/v1/<%= plural_table_name %>
       def index
-        @<%= plural_table_name %> = <%= class_name %>.all
-        render json: @<%= plural_table_name %>
+        records = <%= class_name %>.all
+
+        # Filtros básicos automáticos (ex: ?campo=valor)
+        <%= attributes.map do |attr|
+          "records = records.where(#{attr.name.to_sym.inspect} => params[:#{attr.name}]) if params[:#{attr.name}].present?"
+        end.join("\n        ") %>
+
+        @pagy, @<%= plural_table_name %> = pagy(records.order(:id))
+
+        render json: {
+          current_page: @pagy.page,
+          per_page: @pagy.limit,
+          total_pages: @pagy.pages,
+          total_count: @pagy.count,
+          <%= plural_table_name %>: ActiveModelSerializers::SerializableResource.new(@<%= plural_table_name %>)
+        }
       end
 
+      # GET /api/v1/<%= plural_table_name %>/:id
       def show
         render json: @<%= singular_table_name %>
       end
 
+      # POST /api/v1/<%= plural_table_name %>
       def create
         @<%= singular_table_name %> = <%= class_name %>.new(<%= singular_table_name %>_params)
         if @<%= singular_table_name %>.save
@@ -23,6 +42,7 @@ module Api
         end
       end
 
+      # PATCH/PUT /api/v1/<%= plural_table_name %>/:id
       def update
         if @<%= singular_table_name %>.update(<%= singular_table_name %>_params)
           render json: @<%= singular_table_name %>
@@ -31,8 +51,9 @@ module Api
         end
       end
 
+      # DELETE /api/v1/<%= plural_table_name %>/:id
       def destroy
-        @<%= singular_table_name %>.destroy
+        @<%= singular_table_name %>.destroy!
         head :no_content
       end
 
@@ -41,11 +62,11 @@ module Api
       def set_<%= singular_table_name %>
         @<%= singular_table_name %> = <%= class_name %>.find(params[:id])
       rescue ActiveRecord::RecordNotFound
-        render json: { error: "Not found" }, status: :not_found
+        render json: { error: "<%= class_name %> não encontrado" }, status: :not_found
       end
 
       def <%= singular_table_name %>_params
-        params.require(:<%= singular_table_name %>).permit(<%= attributes.map(&:name).join(", ") %>)
+        params.require(:<%= singular_table_name %>).permit(<%= attributes.map { |a| ":#{a.name}" }.join(", ") %>)
       end
     end
   end
