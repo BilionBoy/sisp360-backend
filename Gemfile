@@ -29,8 +29,6 @@ gem "bootsnap", require: false
 # gem "image_processing", "~> 1.2"
 gem "ransack", "~> 4.1"
 
-
-gem "active_model_serializers", "~> 0.10.2"
 # Paginação
 gem "pagy"
 
