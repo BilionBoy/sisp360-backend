@@ -26,6 +26,10 @@ threads threads_count, threads_count
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
 port ENV.fetch("PORT", 4000)
 
+# Bind to specific IP address (permite acessar de outros dispositivos na mesma rede)
+# Use 0.0.0.0 para aceitar conexões de qualquer IP, ou especifique um IP específico
+bind ENV.fetch("BIND", "tcp://10.0.1.38:4000")
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 

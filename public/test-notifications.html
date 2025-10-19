@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISP360 - Teste de Notificações WebSocket</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .status.connected {
+      background: #10b981;
+      color: white;
+    }
+
+    .status.disconnected {
+      background: #ef4444;
+      color: white;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: white;
+    }
+
+    .status.connected .status-dot {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-info {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .notifications-list {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .notification {
+      background: #f9fafb;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border-left: 4px solid #667eea;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .notification-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 8px;
+    }
+
+    .notification-title {
+      font-weight: 600;
+      color: #333;
+      font-size: 16px;
+    }
+
+    .notification-time {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .notification-message {
+      color: #4b5563;
+      margin-bottom: 8px;
+    }
+
+    .notification-data {
+      background: white;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      overflow-x: auto;
+    }
+
+    .notification-type {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .type-ocorrencia_criada {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .type-ocorrencia_finalizada {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .type-ocorrencia_atualizada {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .type-sistema {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+
+    .type-test {
+      background: #fce7f3;
+      color: #831843;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .stat {
+      background: #f9fafb;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #9ca3af;
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>SISP360 - Teste de Notificações em Tempo Real</h1>
+      <p style="color: #6b7280; margin: 10px 0;">WebSocket Action Cable com Diferenciação de Dispositivos</p>
+
+      <div style="margin: 15px 0; padding: 15px; background: #f3f4f6; border-radius: 8px;">
+        <label for="device-type-selector" style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">
+          📱 Tipo de Dispositivo:
+        </label>
+        <select id="device-type-selector" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 14px; width: 200px;">
+          <option value="web">🖥️ Web (Computador)</option>
+          <option value="mobile">📱 Mobile (Celular)</option>
+          <option value="tablet">📲 Tablet</option>
+        </select>
+        <button onclick="reconnect()" style="margin-left: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
+          🔄 Reconectar
+        </button>
+        <div id="device-info" style="margin-top: 10px; font-size: 12px; color: #6b7280;"></div>
+      </div>
+
+      <div id="connection-status" class="status disconnected">
+        <div class="status-dot"></div>
+        <span>Desconectado</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Estatísticas</h2>
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-value" id="total-notifications">0</div>
+            <div class="stat-label">Total</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="ocorrencias-created">0</div>
+            <div class="stat-label">Criadas</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="ocorrencias-finished">0</div>
+            <div class="stat-label">Finalizadas</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Ações de Teste</h2>
+        <div class="button-group">
+          <button class="btn-primary" onclick="sendTestNotification()">Enviar Notificação de Teste</button>
+          <button class="btn-success" onclick="createOcorrencia()">Criar Ocorrência (Teste)</button>
+          <button class="btn-warning" onclick="sendCustomNotification()">Enviar Notificação Customizada</button>
+          <button class="btn-danger" onclick="clearNotifications()">Limpar Lista</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Notificações Recebidas (Tempo Real)</h2>
+      <div id="notifications-container" class="notifications-list">
+        <div class="empty-state">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+          </svg>
+          <p>Aguardando notificações...</p>
+          <p style="font-size: 12px; margin-top: 8px;">Conecte ao WebSocket para receber notificações em tempo real</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@rails/actioncable@7.0.0/app/assets/javascripts/action_cable.js"></script>
+  <script>
+    let cable;
+    let subscription;
+    let notificationCount = 0;
+    let ocorrenciasCreated = 0;
+    let ocorrenciasFinished = 0;
+
+    // Detectar tipo de dispositivo automaticamente
+    function detectDeviceType() {
+      const userAgent = navigator.userAgent.toLowerCase();
+      if (/mobile|android|iphone/.test(userAgent)) {
+        return 'mobile';
+      } else if (/tablet|ipad/.test(userAgent)) {
+        return 'tablet';
+      }
+      return 'web';
+    }
+
+    // Obter ou gerar device_id persistente
+    function getDeviceId() {
+      let deviceId = localStorage.getItem('sisp360_device_id');
+      if (!deviceId) {
+        deviceId = `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('sisp360_device_id', deviceId);
+      }
+      return deviceId;
+    }
+
+    // Conectar ao WebSocket
+    function connect() {
+      // Pegar device_type do selector ou detectar automaticamente
+      const deviceSelector = document.getElementById('device-type-selector');
+      const deviceType = deviceSelector ? deviceSelector.value : detectDeviceType();
+      const deviceId = getDeviceId();
+
+      cable = ActionCable.createConsumer('ws://localhost:4000/cable');
+
+      subscription = cable.subscriptions.create({
+        channel: 'NotificationsChannel',
+        device_type: deviceType,
+        device_id: deviceId
+      }, {
+        connected() {
+          console.log(`[WebSocket] Conectado ao canal de notificações como ${deviceType}`);
+          console.log(`[WebSocket] Device ID: ${deviceId}`);
+          updateConnectionStatus(true);
+        },
+
+        disconnected() {
+          console.log('[WebSocket] Desconectado do canal de notificações');
+          updateConnectionStatus(false);
+        },
+
+        received(data) {
+          console.log('[WebSocket] Notificação recebida:', data);
+
+          // Mostrar informações de device na primeira conexão
+          if (data.type === 'connection_established') {
+            console.log('[WebSocket] Device Info:', data.device_info);
+            document.getElementById('device-info').innerHTML = `
+              <strong>Tipo:</strong> ${data.device_info.device_type}<br>
+              <strong>ID:</strong> ${data.device_info.device_id.substring(0, 20)}...
+            `;
+            return;
+          }
+
+          handleNotification(data);
+        }
+      });
+    }
+
+    // Reconectar com novo device_type
+    function reconnect() {
+      console.log('[WebSocket] Reconectando...');
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+      if (cable) {
+        cable.disconnect();
+      }
+      setTimeout(() => {
+        connect();
+      }, 500);
+    }
+
+    // Atualizar status de conexão
+    function updateConnectionStatus(connected) {
+      const statusEl = document.getElementById('connection-status');
+      if (connected) {
+        statusEl.className = 'status connected';
+        statusEl.innerHTML = '<div class="status-dot"></div><span>Conectado</span>';
+      } else {
+        statusEl.className = 'status disconnected';
+        statusEl.innerHTML = '<div class="status-dot"></div><span>Desconectado</span>';
+      }
+    }
+
+    // Manipular notificação recebida
+    function handleNotification(notification) {
+      if (notification.type === 'connection_established') {
+        return; // Ignorar mensagem de conexão
+      }
+
+      // Atualizar estatísticas
+      notificationCount++;
+      document.getElementById('total-notifications').textContent = notificationCount;
+
+      if (notification.type === 'ocorrencia_criada') {
+        ocorrenciasCreated++;
+        document.getElementById('ocorrencias-created').textContent = ocorrenciasCreated;
+      } else if (notification.type === 'ocorrencia_finalizada') {
+        ocorrenciasFinished++;
+        document.getElementById('ocorrencias-finished').textContent = ocorrenciasFinished;
+      }
+
+      // Adicionar à lista
+      addNotificationToList(notification);
+
+      // Notificação do navegador (se permitido)
+      if (Notification.permission === 'granted') {
+        new Notification(notification.title || 'SISP360', {
+          body: notification.message,
+          icon: '/favicon.ico'
+        });
+      }
+    }
+
+    // Adicionar notificação à lista
+    function addNotificationToList(notification) {
+      const container = document.getElementById('notifications-container');
+
+      // Remover empty state
+      if (container.querySelector('.empty-state')) {
+        container.innerHTML = '';
+      }
+
+      const notificationEl = document.createElement('div');
+      notificationEl.className = 'notification';
+
+      const time = new Date(notification.timestamp).toLocaleString('pt-BR');
+
+      notificationEl.innerHTML = `
+        <div class="notification-header">
+          <div class="notification-title">${notification.title || 'Notificação'}</div>
+          <div class="notification-time">${time}</div>
+        </div>
+        <div class="notification-message">${notification.message}</div>
+        ${notification.data ? `<div class="notification-data">${JSON.stringify(notification.data, null, 2)}</div>` : ''}
+        <div class="notification-type type-${notification.type}">${notification.type}</div>
+      `;
+
+      container.insertBefore(notificationEl, container.firstChild);
+
+      // Manter apenas últimas 50 notificações
+      while (container.children.length > 50) {
+        container.removeChild(container.lastChild);
+      }
+    }
+
+    // Enviar notificação de teste
+    async function sendTestNotification() {
+      try {
+        const response = await fetch('http://localhost:4000/api/v1/notifications/test', {
+          method: 'POST'
+        });
+        const data = await response.json();
+        console.log('Notificação de teste enviada:', data);
+      } catch (error) {
+        console.error('Erro ao enviar notificação de teste:', error);
+        alert('Erro ao enviar notificação de teste. Verifique se o servidor está rodando.');
+      }
+    }
+
+    // Criar ocorrência de teste
+    async function createOcorrencia() {
+      try {
+        const ocorrencia = {
+          numero_bo: `BO-${Date.now()}`,
+          id_tipo_crime: 1,
+          id_bairro: 1,
+          data_ocorrencia: new Date().toISOString().split('T')[0],
+          hora_ocorrencia: new Date().toTimeString().split(' ')[0],
+          status_ocorrencia: 'Pendente',
+          descricao_ocorrencia: 'Ocorrência de teste criada via interface de testes',
+          latitude_ocorrencia: -23.5505,
+          longitude_ocorrencia: -46.6333
+        };
+
+        const response = await fetch('http://localhost:4000/api/v1/ocorrencias', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ ocorrencia })
+        });
+
+        const data = await response.json();
+        console.log('Ocorrência criada:', data);
+      } catch (error) {
+        console.error('Erro ao criar ocorrência:', error);
+        alert('Erro ao criar ocorrência. Verifique se o servidor está rodando.');
+      }
+    }
+
+    // Enviar notificação customizada
+    async function sendCustomNotification() {
+      const message = prompt('Digite a mensagem da notificação:', 'Teste de notificação customizada');
+      if (!message) return;
+
+      try {
+        const response = await fetch('http://localhost:4000/api/v1/notifications/broadcast', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            type: 'custom',
+            title: 'Notificação Customizada',
+            message: message,
+            data: { source: 'test-interface', timestamp: new Date().toISOString() }
+          })
+        });
+
+        const data = await response.json();
+        console.log('Notificação customizada enviada:', data);
+      } catch (error) {
+        console.error('Erro ao enviar notificação customizada:', error);
+        alert('Erro ao enviar notificação customizada. Verifique se o servidor está rodando.');
+      }
+    }
+
+    // Limpar lista de notificações
+    function clearNotifications() {
+      const container = document.getElementById('notifications-container');
+      container.innerHTML = `
+        <div class="empty-state">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+          </svg>
+          <p>Aguardando notificações...</p>
+          <p style="font-size: 12px; margin-top: 8px;">Conecte ao WebSocket para receber notificações em tempo real</p>
+        </div>
+      `;
+
+      // Resetar estatísticas
+      notificationCount = 0;
+      ocorrenciasCreated = 0;
+      ocorrenciasFinished = 0;
+      document.getElementById('total-notifications').textContent = '0';
+      document.getElementById('ocorrencias-created').textContent = '0';
+      document.getElementById('ocorrencias-finished').textContent = '0';
+    }
+
+    // Solicitar permissão para notificações do navegador
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // Conectar ao iniciar a página
+    connect();
+  </script>
+</body>
+</html>
