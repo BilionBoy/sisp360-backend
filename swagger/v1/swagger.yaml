@@ -1,0 +1,2584 @@
+---
+openapi: 3.0.1
+info:
+  title: SISP360 API - Sistema de Informação de Segurança Pública de Porto Velho
+  version: 1.0.0
+  description: |
+    API RESTful para o sistema SISP360 de análise e gestão de dados de criminalidade em Porto Velho/RO.
+
+    ## Recursos Principais
+
+    - **Ocorrências**: Registro e consulta de ocorrências criminais
+    - **Bairros e Zonas**: Informações geográficas e administrativas
+    - **Tipos de Crime**: Categorização baseada em SENASP
+    - **Estatísticas**: Dados agregados por bairro e período
+    - **Indicadores Socioeconômicos**: Correlação com criminalidade
+    - **Complexos Habitacionais**: Dados de conjuntos residenciais
+    - **Pesquisas**: Dados de pesquisas sociais
+    - **Usuários e Auditoria**: Gestão de usuários e logs de auditoria
+
+    ## Paginação
+
+    Todos os endpoints de listagem (GET /api/v1/{resource}) suportam paginação via query parameters:
+    - `page` (integer): Número da página (default: 1)
+    - `items` (integer): Itens por página (default: 25)
+
+    A resposta inclui metadados de paginação:
+    - `current_page`: Página atual
+    - `per_page`: Itens por página
+    - `total_pages`: Total de páginas
+    - `total_count`: Total de registros
+
+    ## Filtros
+
+    Endpoints de listagem suportam filtros via query parameters específicos de cada recurso.
+paths:
+  "/api/v1/auditorias":
+    get:
+      summary: Lista todos os registros de auditoria
+      tags:
+      - Auditoria
+      description: Lista logs de auditoria do sistema para rastreamento de ações dos
+        usuários.
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: items
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: id_usuario
+        in: query
+        required: false
+        description: Filtrar por ID do usuário
+        schema:
+          type: integer
+      - name: acao
+        in: query
+        required: false
+        description: Filtrar por tipo de ação
+        schema:
+          type: string
+      - name: tabela_afetada
+        in: query
+        required: false
+        description: Filtrar por tabela afetada
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Lista de auditorias
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_count:
+                    type: integer
+                  auditorias:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Auditoria"
+    post:
+      summary: Cria um novo registro de auditoria
+      tags:
+      - Auditoria
+      description: Registra uma ação de auditoria no sistema.
+      parameters: []
+      responses:
+        '201':
+          description: Auditoria criada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Auditoria"
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                auditoria:
+                  type: object
+                  properties:
+                    id_usuario:
+                      type: integer
+                      example: 1
+                      nullable: true
+                    acao:
+                      type: string
+                      example: CREATE
+                    tabela_afetada:
+                      type: string
+                      example: ocorrencias
+                      nullable: true
+                    id_registro_afetado:
+                      type: integer
+                      example: 123
+                      nullable: true
+                    dados_anteriores:
+                      type: object
+                      example:
+                        status: Registrada
+                      nullable: true
+                    dados_novos:
+                      type: object
+                      example:
+                        status: Em Investigação
+                      nullable: true
+                    ip_origem:
+                      type: string
+                      format: ipv4
+                      example: 192.168.1.1
+                      nullable: true
+                    user_agent:
+                      type: string
+                      example: Mozilla/5.0...
+                      nullable: true
+                  required:
+                  - acao
+              required:
+              - auditoria
+  "/api/v1/auditorias/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retorna um registro de auditoria específico
+      tags:
+      - Auditoria
+      responses:
+        '200':
+          description: Auditoria encontrada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Auditoria"
+        '404':
+          description: Auditoria não encontrada
+    patch:
+      summary: Atualiza um registro de auditoria
+      tags:
+      - Auditoria
+      parameters: []
+      responses:
+        '200':
+          description: Auditoria atualizada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Auditoria"
+        '404':
+          description: Auditoria não encontrada
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                auditoria:
+                  "$ref": "#/components/schemas/Auditoria"
+    put:
+      summary: Atualiza um registro de auditoria
+      tags:
+      - Auditoria
+      parameters: []
+      responses:
+        '200':
+          description: Auditoria atualizada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Auditoria"
+        '404':
+          description: Auditoria não encontrada
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                auditoria:
+                  "$ref": "#/components/schemas/Auditoria"
+    delete:
+      summary: Remove um registro de auditoria
+      tags:
+      - Auditoria
+      responses:
+        '204':
+          description: Auditoria removida
+        '404':
+          description: Auditoria não encontrada
+  "/api/v1/bairros":
+    get:
+      summary: Lista todos os bairros
+      tags:
+      - Bairros
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: items
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: id_zona
+        in: query
+        required: false
+        description: Filtrar por ID da zona
+        schema:
+          type: integer
+      - name: nome_bairro
+        in: query
+        required: false
+        description: Filtrar por nome do bairro
+        schema:
+          type: string
+      - name: codigo_ibge
+        in: query
+        required: false
+        description: Filtrar por código IBGE
+        schema:
+          type: string
+      - name: status_bairro
+        in: query
+        type: string
+        required: false
+        schema:
+          type: string
+          enum:
+          - Oficial
+          - Não Oficial
+          - Em Processo
+      responses:
+        '200':
+          description: Lista de bairros
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_count:
+                    type: integer
+                  bairros:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Bairro"
+    post:
+      summary: Cria um novo bairro
+      tags:
+      - Bairros
+      parameters: []
+      responses:
+        '201':
+          description: Bairro criado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Bairro"
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bairro:
+                  "$ref": "#/components/schemas/Bairro"
+              required:
+              - bairro
+  "/api/v1/bairros/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retorna um bairro específico
+      tags:
+      - Bairros
+      responses:
+        '200':
+          description: Bairro encontrado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Bairro"
+        '404':
+          description: Bairro não encontrado
+    patch:
+      summary: Atualiza um bairro
+      tags:
+      - Bairros
+      parameters: []
+      responses:
+        '200':
+          description: Bairro atualizado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Bairro"
+        '404':
+          description: Bairro não encontrado
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bairro:
+                  "$ref": "#/components/schemas/Bairro"
+    put:
+      summary: Atualiza um bairro
+      tags:
+      - Bairros
+      parameters: []
+      responses:
+        '200':
+          description: Bairro atualizado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Bairro"
+        '404':
+          description: Bairro não encontrado
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bairro:
+                  "$ref": "#/components/schemas/Bairro"
+    delete:
+      summary: Remove um bairro
+      tags:
+      - Bairros
+      responses:
+        '204':
+          description: Bairro removido
+        '404':
+          description: Bairro não encontrado
+  "/api/v1/complexos_habitacionais":
+    get:
+      summary: Lista todos os complexos habitacionais
+      tags:
+      - Complexos Habitacionais
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: items
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: id_bairro
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: tipo_complexo
+        in: query
+        type: string
+        required: false
+        schema:
+          type: string
+          enum:
+          - Condomínio Privado
+          - Conjunto Habitacional Popular
+          - Residencial Minha Casa Minha Vida
+      responses:
+        '200':
+          description: Lista de complexos habitacionais
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_count:
+                    type: integer
+                  complexos_habitacionais:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/ComplexoHabitacional"
+    post:
+      summary: Cria um novo complexo habitacional
+      tags:
+      - Complexos Habitacionais
+      parameters: []
+      responses:
+        '201':
+          description: Complexo habitacional criado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ComplexoHabitacional"
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                complexo_habitacional:
+                  "$ref": "#/components/schemas/ComplexoHabitacional"
+              required:
+              - complexo_habitacional
+  "/api/v1/complexos_habitacionais/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retorna um complexo habitacional específico
+      tags:
+      - Complexos Habitacionais
+      responses:
+        '200':
+          description: Complexo habitacional encontrado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ComplexoHabitacional"
+        '404':
+          description: Complexo habitacional não encontrado
+    patch:
+      summary: Atualiza um complexo habitacional
+      tags:
+      - Complexos Habitacionais
+      parameters: []
+      responses:
+        '200':
+          description: Complexo habitacional atualizado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ComplexoHabitacional"
+        '404':
+          description: Complexo habitacional não encontrado
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                complexo_habitacional:
+                  "$ref": "#/components/schemas/ComplexoHabitacional"
+    put:
+      summary: Atualiza um complexo habitacional
+      tags:
+      - Complexos Habitacionais
+      parameters: []
+      responses:
+        '200':
+          description: Complexo habitacional atualizado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ComplexoHabitacional"
+        '404':
+          description: Complexo habitacional não encontrado
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                complexo_habitacional:
+                  "$ref": "#/components/schemas/ComplexoHabitacional"
+    delete:
+      summary: Remove um complexo habitacional
+      tags:
+      - Complexos Habitacionais
+      responses:
+        '204':
+          description: Complexo habitacional removido
+        '404':
+          description: Complexo habitacional não encontrado
+  "/api/v1/estatisticas_bairro":
+    get:
+      summary: Lista todas as estatísticas de bairro
+      tags:
+      - Estatísticas
+      description: Retorna estatísticas agregadas de criminalidade por bairro e período.
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: items
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: id_bairro
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: ano
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: mes
+        in: query
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Lista de estatísticas de bairro
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_count:
+                    type: integer
+                  estatisticas_bairro:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/EstatisticaBairro"
+    post:
+      summary: Cria uma nova estatística de bairro
+      tags:
+      - Estatísticas
+      parameters: []
+      responses:
+        '201':
+          description: Estatística criada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/EstatisticaBairro"
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estatistica_bairro:
+                  "$ref": "#/components/schemas/EstatisticaBairro"
+              required:
+              - estatistica_bairro
+  "/api/v1/estatisticas_bairro/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retorna uma estatística de bairro específica
+      tags:
+      - Estatísticas
+      responses:
+        '200':
+          description: Estatística encontrada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/EstatisticaBairro"
+        '404':
+          description: Estatística não encontrada
+    patch:
+      summary: Atualiza uma estatística de bairro
+      tags:
+      - Estatísticas
+      parameters: []
+      responses:
+        '200':
+          description: Estatística atualizada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/EstatisticaBairro"
+        '404':
+          description: Estatística não encontrada
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estatistica_bairro:
+                  "$ref": "#/components/schemas/EstatisticaBairro"
+    put:
+      summary: Atualiza uma estatística de bairro
+      tags:
+      - Estatísticas
+      parameters: []
+      responses:
+        '200':
+          description: Estatística atualizada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/EstatisticaBairro"
+        '404':
+          description: Estatística não encontrada
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estatistica_bairro:
+                  "$ref": "#/components/schemas/EstatisticaBairro"
+    delete:
+      summary: Remove uma estatística de bairro
+      tags:
+      - Estatísticas
+      responses:
+        '204':
+          description: Estatística removida
+        '404':
+          description: Estatística não encontrada
+  "/api/v1/indicadores_socioeconomicos":
+    get:
+      summary: Lista todos os indicadores socioeconômicos
+      tags:
+      - Indicadores Socioeconômicos
+      description: Retorna indicadores socioeconômicos por bairro para análise de
+        correlação com criminalidade.
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: items
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: id_bairro
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: ano_referencia
+        in: query
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Lista de indicadores socioeconômicos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_count:
+                    type: integer
+                  indicadores_socioeconomicos:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/IndicadorSocioeconomico"
+    post:
+      summary: Cria um novo indicador socioeconômico
+      tags:
+      - Indicadores Socioeconômicos
+      parameters: []
+      responses:
+        '201':
+          description: Indicador socioeconômico criado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/IndicadorSocioeconomico"
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                indicador_socioeconomico:
+                  "$ref": "#/components/schemas/IndicadorSocioeconomico"
+              required:
+              - indicador_socioeconomico
+  "/api/v1/indicadores_socioeconomicos/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retorna um indicador socioeconômico específico
+      tags:
+      - Indicadores Socioeconômicos
+      responses:
+        '200':
+          description: Indicador socioeconômico encontrado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/IndicadorSocioeconomico"
+        '404':
+          description: Indicador socioeconômico não encontrado
+    patch:
+      summary: Atualiza um indicador socioeconômico
+      tags:
+      - Indicadores Socioeconômicos
+      parameters: []
+      responses:
+        '200':
+          description: Indicador socioeconômico atualizado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/IndicadorSocioeconomico"
+        '404':
+          description: Indicador socioeconômico não encontrado
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                indicador_socioeconomico:
+                  "$ref": "#/components/schemas/IndicadorSocioeconomico"
+    put:
+      summary: Atualiza um indicador socioeconômico
+      tags:
+      - Indicadores Socioeconômicos
+      parameters: []
+      responses:
+        '200':
+          description: Indicador socioeconômico atualizado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/IndicadorSocioeconomico"
+        '404':
+          description: Indicador socioeconômico não encontrado
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                indicador_socioeconomico:
+                  "$ref": "#/components/schemas/IndicadorSocioeconomico"
+    delete:
+      summary: Remove um indicador socioeconômico
+      tags:
+      - Indicadores Socioeconômicos
+      responses:
+        '204':
+          description: Indicador socioeconômico removido
+        '404':
+          description: Indicador socioeconômico não encontrado
+  "/api/v1/ocorrencias":
+    get:
+      summary: Lista todas as ocorrências criminais
+      tags:
+      - Ocorrências
+      parameters:
+      - name: page
+        in: query
+        required: false
+        description: 'Número da página (default: 1)'
+        schema:
+          type: integer
+      - name: items
+        in: query
+        required: false
+        description: 'Itens por página (default: 25)'
+        schema:
+          type: integer
+      - name: numero_bo
+        in: query
+        required: false
+        description: Filtrar por número do Boletim de Ocorrência
+        schema:
+          type: string
+      - name: id_tipo_crime
+        in: query
+        required: false
+        description: Filtrar por ID do tipo de crime
+        schema:
+          type: integer
+      - name: id_bairro
+        in: query
+        required: false
+        description: Filtrar por ID do bairro
+        schema:
+          type: integer
+      - name: data_ocorrencia
+        in: query
+        format: date
+        required: false
+        description: Filtrar por data da ocorrência (YYYY-MM-DD)
+        schema:
+          type: string
+      - name: periodo_dia
+        in: query
+        type: string
+        required: false
+        description: Filtrar por período do dia
+        schema:
+          type: string
+          enum:
+          - Madrugada
+          - Manhã
+          - Tarde
+          - Noite
+      - name: status_ocorrencia
+        in: query
+        type: string
+        required: false
+        description: Filtrar por status da ocorrência
+        schema:
+          type: string
+          enum:
+          - Registrada
+          - Em Investigação
+          - Resolvida
+          - Arquivada
+      responses:
+        '200':
+          description: Lista de ocorrências com paginação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_page:
+                    type: integer
+                    example: 1
+                  per_page:
+                    type: integer
+                    example: 25
+                  total_pages:
+                    type: integer
+                    example: 10
+                  total_count:
+                    type: integer
+                    example: 250
+                  ocorrencias:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Ocorrencia"
+                required:
+                - current_page
+                - per_page
+                - total_pages
+                - total_count
+                - ocorrencias
+    post:
+      summary: Cria uma nova ocorrência
+      tags:
+      - Ocorrências
+      parameters: []
+      responses:
+        '201':
+          description: Ocorrência criada com sucesso
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Ocorrencia"
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                example:
+                  errors:
+                    id_tipo_crime:
+                    - can't be blank
+                    id_bairro:
+                    - can't be blank
+                    data_ocorrencia:
+                    - can't be blank
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ocorrencia:
+                  type: object
+                  properties:
+                    numero_bo:
+                      type: string
+                      example: BO-2024-001234
+                    id_tipo_crime:
+                      type: integer
+                      example: 1
+                    id_bairro:
+                      type: integer
+                      example: 5
+                    data_ocorrencia:
+                      type: string
+                      format: date
+                      example: '2024-01-15'
+                    hora_ocorrencia:
+                      type: string
+                      format: time
+                      example: '14:30:00'
+                    dia_semana:
+                      type: string
+                      enum:
+                      - Segunda
+                      - Terça
+                      - Quarta
+                      - Quinta
+                      - Sexta
+                      - Sábado
+                      - Domingo
+                      example: Segunda
+                    periodo_dia:
+                      type: string
+                      enum:
+                      - Madrugada
+                      - Manhã
+                      - Tarde
+                      - Noite
+                      example: Tarde
+                    latitude_ocorrencia:
+                      type: number
+                      format: float
+                      example: -8.7619
+                    longitude_ocorrencia:
+                      type: number
+                      format: float
+                      example: -63.8722
+                    logradouro:
+                      type: string
+                      example: Av. Jorge Teixeira
+                    numero_endereco:
+                      type: string
+                      example: '1500'
+                    ponto_referencia:
+                      type: string
+                      example: Próximo ao supermercado
+                    descricao_ocorrencia:
+                      type: string
+                      example: Furto de veículo na via pública
+                    vitimas:
+                      type: integer
+                      example: 1
+                      default: 1
+                    valor_prejuizo:
+                      type: number
+                      format: float
+                      example: 25000.0
+                    recuperado:
+                      type: boolean
+                      example: false
+                      default: false
+                    status_ocorrencia:
+                      type: string
+                      enum:
+                      - Registrada
+                      - Em Investigação
+                      - Resolvida
+                      - Arquivada
+                      example: Registrada
+                      default: Registrada
+                    origem_registro:
+                      type: string
+                      enum:
+                      - PM
+                      - PC
+                      - Sistema Integrado
+                      - Outro
+                      example: PM
+                      default: PM
+                    usuario_registro:
+                      type: string
+                      example: joao.silva
+                  required:
+                  - id_tipo_crime
+                  - id_bairro
+                  - data_ocorrencia
+              required:
+              - ocorrencia
+  "/api/v1/ocorrencias/{id}":
+    parameters:
+    - name: id
+      in: path
+      description: ID da ocorrência
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retorna uma ocorrência específica
+      tags:
+      - Ocorrências
+      responses:
+        '200':
+          description: Ocorrência encontrada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Ocorrencia"
+        '404':
+          description: Ocorrência não encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Ocorrencia não encontrada
+    patch:
+      summary: Atualiza uma ocorrência
+      tags:
+      - Ocorrências
+      parameters: []
+      responses:
+        '200':
+          description: Ocorrência atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Ocorrencia"
+        '404':
+          description: Ocorrência não encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Ocorrencia não encontrada
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ocorrencia:
+                  type: object
+                  properties:
+                    numero_bo:
+                      type: string
+                    id_tipo_crime:
+                      type: integer
+                    id_bairro:
+                      type: integer
+                    data_ocorrencia:
+                      type: string
+                      format: date
+                    hora_ocorrencia:
+                      type: string
+                      format: time
+                    dia_semana:
+                      type: string
+                      enum:
+                      - Segunda
+                      - Terça
+                      - Quarta
+                      - Quinta
+                      - Sexta
+                      - Sábado
+                      - Domingo
+                    periodo_dia:
+                      type: string
+                      enum:
+                      - Madrugada
+                      - Manhã
+                      - Tarde
+                      - Noite
+                    latitude_ocorrencia:
+                      type: number
+                      format: float
+                    longitude_ocorrencia:
+                      type: number
+                      format: float
+                    logradouro:
+                      type: string
+                    numero_endereco:
+                      type: string
+                    ponto_referencia:
+                      type: string
+                    descricao_ocorrencia:
+                      type: string
+                    vitimas:
+                      type: integer
+                    valor_prejuizo:
+                      type: number
+                      format: float
+                    recuperado:
+                      type: boolean
+                    status_ocorrencia:
+                      type: string
+                      enum:
+                      - Registrada
+                      - Em Investigação
+                      - Resolvida
+                      - Arquivada
+                    origem_registro:
+                      type: string
+                      enum:
+                      - PM
+                      - PC
+                      - Sistema Integrado
+                      - Outro
+                    usuario_registro:
+                      type: string
+              required:
+              - ocorrencia
+    put:
+      summary: Atualiza uma ocorrência
+      tags:
+      - Ocorrências
+      parameters: []
+      responses:
+        '200':
+          description: Ocorrência atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Ocorrencia"
+        '404':
+          description: Ocorrência não encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Ocorrencia não encontrada
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ocorrencia:
+                  type: object
+                  properties:
+                    numero_bo:
+                      type: string
+                    id_tipo_crime:
+                      type: integer
+                    id_bairro:
+                      type: integer
+                    data_ocorrencia:
+                      type: string
+                      format: date
+                    hora_ocorrencia:
+                      type: string
+                      format: time
+                    dia_semana:
+                      type: string
+                      enum:
+                      - Segunda
+                      - Terça
+                      - Quarta
+                      - Quinta
+                      - Sexta
+                      - Sábado
+                      - Domingo
+                    periodo_dia:
+                      type: string
+                      enum:
+                      - Madrugada
+                      - Manhã
+                      - Tarde
+                      - Noite
+                    latitude_ocorrencia:
+                      type: number
+                      format: float
+                    longitude_ocorrencia:
+                      type: number
+                      format: float
+                    logradouro:
+                      type: string
+                    numero_endereco:
+                      type: string
+                    ponto_referencia:
+                      type: string
+                    descricao_ocorrencia:
+                      type: string
+                    vitimas:
+                      type: integer
+                    valor_prejuizo:
+                      type: number
+                      format: float
+                    recuperado:
+                      type: boolean
+                    status_ocorrencia:
+                      type: string
+                      enum:
+                      - Registrada
+                      - Em Investigação
+                      - Resolvida
+                      - Arquivada
+                    origem_registro:
+                      type: string
+                      enum:
+                      - PM
+                      - PC
+                      - Sistema Integrado
+                      - Outro
+                    usuario_registro:
+                      type: string
+              required:
+              - ocorrencia
+    delete:
+      summary: Remove uma ocorrência
+      tags:
+      - Ocorrências
+      responses:
+        '204':
+          description: Ocorrência removida com sucesso
+        '404':
+          description: Ocorrência não encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Ocorrencia não encontrada
+  "/api/v1/pesquisas":
+    get:
+      summary: Lista todas as pesquisas
+      tags:
+      - Pesquisas
+      description: Retorna dados de pesquisas sociais realizadas em bairros e complexos
+        habitacionais.
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: items
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: id_bairro
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: id_complexo
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: data_pesquisa
+        in: query
+        format: date
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Lista de pesquisas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_count:
+                    type: integer
+                  pesquisas:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Pesquisa"
+    post:
+      summary: Cria uma nova pesquisa
+      tags:
+      - Pesquisas
+      parameters: []
+      responses:
+        '201':
+          description: Pesquisa criada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Pesquisa"
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pesquisa:
+                  "$ref": "#/components/schemas/Pesquisa"
+              required:
+              - pesquisa
+  "/api/v1/pesquisas/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retorna uma pesquisa específica
+      tags:
+      - Pesquisas
+      responses:
+        '200':
+          description: Pesquisa encontrada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Pesquisa"
+        '404':
+          description: Pesquisa não encontrada
+    patch:
+      summary: Atualiza uma pesquisa
+      tags:
+      - Pesquisas
+      parameters: []
+      responses:
+        '200':
+          description: Pesquisa atualizada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Pesquisa"
+        '404':
+          description: Pesquisa não encontrada
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pesquisa:
+                  "$ref": "#/components/schemas/Pesquisa"
+    put:
+      summary: Atualiza uma pesquisa
+      tags:
+      - Pesquisas
+      parameters: []
+      responses:
+        '200':
+          description: Pesquisa atualizada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Pesquisa"
+        '404':
+          description: Pesquisa não encontrada
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pesquisa:
+                  "$ref": "#/components/schemas/Pesquisa"
+    delete:
+      summary: Remove uma pesquisa
+      tags:
+      - Pesquisas
+      responses:
+        '204':
+          description: Pesquisa removida
+        '404':
+          description: Pesquisa não encontrada
+  "/api/v1/tipos_crime":
+    get:
+      summary: Lista todos os tipos de crime
+      tags:
+      - Tipos de Crime
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: items
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: codigo_senasp
+        in: query
+        required: false
+        description: Filtrar por código SENASP
+        schema:
+          type: string
+      - name: categoria
+        in: query
+        type: string
+        required: false
+        schema:
+          type: string
+          enum:
+          - CVP
+          - CVLI
+          - Outros
+      - name: gravidade
+        in: query
+        type: string
+        required: false
+        schema:
+          type: string
+          enum:
+          - Baixa
+          - Média
+          - Alta
+          - Altíssima
+      - name: ativo
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: nome_crime
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Lista de tipos de crime
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_count:
+                    type: integer
+                  tipos_crime:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/TipoCrime"
+    post:
+      summary: Cria um novo tipo de crime
+      tags:
+      - Tipos de Crime
+      parameters: []
+      responses:
+        '201':
+          description: Tipo de crime criado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/TipoCrime"
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tipo_crime:
+                  "$ref": "#/components/schemas/TipoCrime"
+              required:
+              - tipo_crime
+  "/api/v1/tipos_crime/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retorna um tipo de crime específico
+      tags:
+      - Tipos de Crime
+      responses:
+        '200':
+          description: Tipo de crime encontrado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/TipoCrime"
+        '404':
+          description: Tipo de crime não encontrado
+    patch:
+      summary: Atualiza um tipo de crime
+      tags:
+      - Tipos de Crime
+      parameters: []
+      responses:
+        '200':
+          description: Tipo de crime atualizado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/TipoCrime"
+        '404':
+          description: Tipo de crime não encontrado
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tipo_crime:
+                  "$ref": "#/components/schemas/TipoCrime"
+    put:
+      summary: Atualiza um tipo de crime
+      tags:
+      - Tipos de Crime
+      parameters: []
+      responses:
+        '200':
+          description: Tipo de crime atualizado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/TipoCrime"
+        '404':
+          description: Tipo de crime não encontrado
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tipo_crime:
+                  "$ref": "#/components/schemas/TipoCrime"
+    delete:
+      summary: Remove um tipo de crime
+      tags:
+      - Tipos de Crime
+      responses:
+        '204':
+          description: Tipo de crime removido
+        '404':
+          description: Tipo de crime não encontrado
+  "/api/v1/usuarios":
+    get:
+      summary: Lista todos os usuários
+      tags:
+      - Usuários
+      description: 'Lista todos os usuários do sistema. Nota: o campo senha_hash não
+        é retornado nas respostas.'
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: items
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: tipo_usuario
+        in: query
+        type: string
+        required: false
+        schema:
+          type: string
+          enum:
+          - Admin
+          - Analista
+          - Operador
+          - Consulta
+      - name: ativo
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: email
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Lista de usuários
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_count:
+                    type: integer
+                  usuarios:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Usuario"
+    post:
+      summary: Cria um novo usuário
+      tags:
+      - Usuários
+      description: Cria um novo usuário. O campo senha_hash deve ser fornecido na
+        criação mas não será retornado nas respostas.
+      parameters: []
+      responses:
+        '201':
+          description: Usuário criado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Usuario"
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                usuario:
+                  type: object
+                  properties:
+                    nome_completo:
+                      type: string
+                      example: João da Silva
+                    cpf:
+                      type: string
+                      example: 123.456.789-00
+                    email:
+                      type: string
+                      format: email
+                      example: joao.silva@gov.br
+                    senha_hash:
+                      type: string
+                      example: hashed_password_here
+                    tipo_usuario:
+                      type: string
+                      enum:
+                      - Admin
+                      - Analista
+                      - Operador
+                      - Consulta
+                      example: Analista
+                    orgao:
+                      type: string
+                      example: Polícia Militar
+                    cargo:
+                      type: string
+                      example: Analista de Segurança
+                    ativo:
+                      type: boolean
+                      example: true
+                  required:
+                  - nome_completo
+                  - email
+                  - senha_hash
+              required:
+              - usuario
+  "/api/v1/usuarios/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retorna um usuário específico
+      tags:
+      - Usuários
+      description: Retorna detalhes de um usuário. O campo senha_hash não é retornado.
+      responses:
+        '200':
+          description: Usuário encontrado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Usuario"
+        '404':
+          description: Usuário não encontrado
+    patch:
+      summary: Atualiza um usuário
+      tags:
+      - Usuários
+      parameters: []
+      responses:
+        '200':
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Usuario"
+        '404':
+          description: Usuário não encontrado
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                usuario:
+                  "$ref": "#/components/schemas/Usuario"
+    put:
+      summary: Atualiza um usuário
+      tags:
+      - Usuários
+      parameters: []
+      responses:
+        '200':
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Usuario"
+        '404':
+          description: Usuário não encontrado
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                usuario:
+                  "$ref": "#/components/schemas/Usuario"
+    delete:
+      summary: Remove um usuário
+      tags:
+      - Usuários
+      responses:
+        '204':
+          description: Usuário removido
+        '404':
+          description: Usuário não encontrado
+  "/api/v1/zonas":
+    get:
+      summary: Lista todas as zonas
+      tags:
+      - Zonas
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: items
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: nome_zona
+        in: query
+        required: false
+        description: Filtrar por nome da zona
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Lista de zonas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_count:
+                    type: integer
+                  zonas:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Zona"
+    post:
+      summary: Cria uma nova zona
+      tags:
+      - Zonas
+      parameters: []
+      responses:
+        '201':
+          description: Zona criada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Zona"
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                zona:
+                  "$ref": "#/components/schemas/Zona"
+              required:
+              - zona
+  "/api/v1/zonas/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retorna uma zona específica
+      tags:
+      - Zonas
+      responses:
+        '200':
+          description: Zona encontrada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Zona"
+        '404':
+          description: Zona não encontrada
+    patch:
+      summary: Atualiza uma zona
+      tags:
+      - Zonas
+      parameters: []
+      responses:
+        '200':
+          description: Zona atualizada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Zona"
+        '404':
+          description: Zona não encontrada
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                zona:
+                  "$ref": "#/components/schemas/Zona"
+    put:
+      summary: Atualiza uma zona
+      tags:
+      - Zonas
+      parameters: []
+      responses:
+        '200':
+          description: Zona atualizada
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Zona"
+        '404':
+          description: Zona não encontrada
+        '422':
+          description: Erro de validação
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                zona:
+                  "$ref": "#/components/schemas/Zona"
+    delete:
+      summary: Remove uma zona
+      tags:
+      - Zonas
+      responses:
+        '204':
+          description: Zona removida
+        '404':
+          description: Zona não encontrada
+servers:
+- url: http://localhost:3000
+  description: Servidor de desenvolvimento local
+- url: https://{production-host}
+  description: Servidor de produção
+  variables:
+    production-host:
+      default: api.sisp360.gov.br
+components:
+  schemas:
+    Ocorrencia:
+      type: object
+      properties:
+        id_ocorrencia:
+          type: integer
+          readOnly: true
+        numero_bo:
+          type: string
+          nullable: true
+        id_tipo_crime:
+          type: integer
+        id_bairro:
+          type: integer
+        data_ocorrencia:
+          type: string
+          format: date
+        hora_ocorrencia:
+          type: string
+          format: time
+          nullable: true
+        dia_semana:
+          type: string
+          enum:
+          - Segunda
+          - Terça
+          - Quarta
+          - Quinta
+          - Sexta
+          - Sábado
+          - Domingo
+          nullable: true
+        periodo_dia:
+          type: string
+          enum:
+          - Madrugada
+          - Manhã
+          - Tarde
+          - Noite
+          nullable: true
+        latitude_ocorrencia:
+          type: number
+          format: float
+          nullable: true
+        longitude_ocorrencia:
+          type: number
+          format: float
+          nullable: true
+        logradouro:
+          type: string
+          nullable: true
+        numero_endereco:
+          type: string
+          nullable: true
+        ponto_referencia:
+          type: string
+          nullable: true
+        descricao_ocorrencia:
+          type: string
+          nullable: true
+        vitimas:
+          type: integer
+          default: 1
+        valor_prejuizo:
+          type: number
+          format: float
+          nullable: true
+        recuperado:
+          type: boolean
+          default: false
+        status_ocorrencia:
+          type: string
+          enum:
+          - Registrada
+          - Em Investigação
+          - Resolvida
+          - Arquivada
+          default: Registrada
+        origem_registro:
+          type: string
+          enum:
+          - PM
+          - PC
+          - Sistema Integrado
+          - Outro
+          default: PM
+        data_registro:
+          type: string
+          format: date-time
+          readOnly: true
+        usuario_registro:
+          type: string
+          nullable: true
+      required:
+      - id_tipo_crime
+      - id_bairro
+      - data_ocorrencia
+    Bairro:
+      type: object
+      properties:
+        id_bairro:
+          type: integer
+          readOnly: true
+        nome_bairro:
+          type: string
+        id_zona:
+          type: integer
+        codigo_ibge:
+          type: string
+          nullable: true
+        populacao:
+          type: integer
+          default: 0
+        area_km2:
+          type: number
+          format: float
+          nullable: true
+        densidade_populacional:
+          type: number
+          format: float
+          readOnly: true
+        latitude:
+          type: number
+          format: float
+        longitude:
+          type: number
+          format: float
+        status_bairro:
+          type: string
+          enum:
+          - Oficial
+          - Não Oficial
+          - Em Processo
+          default: Oficial
+        data_criacao_bairro:
+          type: string
+          format: date
+          nullable: true
+        lei_criacao:
+          type: string
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+        data_atualizacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - nome_bairro
+      - id_zona
+      - latitude
+      - longitude
+    Zona:
+      type: object
+      properties:
+        id_zona:
+          type: integer
+          readOnly: true
+        nome_zona:
+          type: string
+        descricao:
+          type: string
+          nullable: true
+        area_km2:
+          type: number
+          format: float
+          nullable: true
+        populacao_estimada:
+          type: integer
+          nullable: true
+        percentual_populacao:
+          type: number
+          format: float
+          nullable: true
+        latitude_centro:
+          type: number
+          format: float
+          nullable: true
+        longitude_centro:
+          type: number
+          format: float
+          nullable: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+        data_atualizacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - nome_zona
+    TipoCrime:
+      type: object
+      properties:
+        id_tipo_crime:
+          type: integer
+          readOnly: true
+        codigo_senasp:
+          type: string
+          nullable: true
+        nome_crime:
+          type: string
+        categoria:
+          type: string
+          enum:
+          - CVP
+          - CVLI
+          - Outros
+          default: CVP
+        descricao:
+          type: string
+          nullable: true
+        gravidade:
+          type: string
+          enum:
+          - Baixa
+          - Média
+          - Alta
+          - Altíssima
+          default: Média
+        ativo:
+          type: boolean
+          default: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - nome_crime
+    Usuario:
+      type: object
+      properties:
+        id_usuario:
+          type: integer
+          readOnly: true
+        nome_completo:
+          type: string
+        cpf:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+        tipo_usuario:
+          type: string
+          enum:
+          - Admin
+          - Analista
+          - Operador
+          - Consulta
+          default: Consulta
+        orgao:
+          type: string
+          nullable: true
+        cargo:
+          type: string
+          nullable: true
+        ativo:
+          type: boolean
+          default: true
+        ultimo_acesso:
+          type: string
+          format: date-time
+          nullable: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+        data_atualizacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - nome_completo
+      - email
+    Auditoria:
+      type: object
+      properties:
+        id_auditoria:
+          type: integer
+          readOnly: true
+        id_usuario:
+          type: integer
+          nullable: true
+        acao:
+          type: string
+        tabela_afetada:
+          type: string
+          nullable: true
+        id_registro_afetado:
+          type: integer
+          nullable: true
+        dados_anteriores:
+          type: object
+          nullable: true
+        dados_novos:
+          type: object
+          nullable: true
+        ip_origem:
+          type: string
+          format: ipv4
+          nullable: true
+        user_agent:
+          type: string
+          nullable: true
+        data_hora:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - acao
+    ComplexoHabitacional:
+      type: object
+      properties:
+        id_complexo:
+          type: integer
+          readOnly: true
+        nome_complexo:
+          type: string
+        tipo_complexo:
+          type: string
+          enum:
+          - Condomínio Privado
+          - Conjunto Habitacional Popular
+          - Residencial Minha Casa Minha Vida
+        id_bairro:
+          type: integer
+        latitude:
+          type: number
+          format: float
+          nullable: true
+        longitude:
+          type: number
+          format: float
+          nullable: true
+        numero_unidades:
+          type: integer
+          nullable: true
+        populacao_estimada:
+          type: integer
+          nullable: true
+        renda_media:
+          type: number
+          format: float
+          nullable: true
+        possui_seguranca:
+          type: boolean
+          default: false
+        possui_controle_acesso:
+          type: boolean
+          default: false
+        ano_inauguracao:
+          type: integer
+          nullable: true
+        construtora:
+          type: string
+          nullable: true
+        programa_governo:
+          type: string
+          nullable: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - nome_complexo
+      - tipo_complexo
+      - id_bairro
+    EstatisticaBairro:
+      type: object
+      properties:
+        id_estatistica:
+          type: integer
+          readOnly: true
+        id_bairro:
+          type: integer
+        ano:
+          type: integer
+        mes:
+          type: integer
+          nullable: true
+        total_ocorrencias:
+          type: integer
+          default: 0
+        total_crimes_cvp:
+          type: integer
+          default: 0
+        taxa_criminalidade_100k:
+          type: number
+          format: float
+          nullable: true
+        taxa_variacao_ano_anterior:
+          type: number
+          format: float
+          nullable: true
+        ranking_bairro:
+          type: integer
+          nullable: true
+        percentual_crimes_zona:
+          type: number
+          format: float
+          nullable: true
+        crime_mais_frequente:
+          type: string
+          nullable: true
+        periodo_maior_incidencia:
+          type: string
+          nullable: true
+        data_calculo:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - id_bairro
+      - ano
+    IndicadorSocioeconomico:
+      type: object
+      properties:
+        id_indicador:
+          type: integer
+          readOnly: true
+        id_bairro:
+          type: integer
+        ano_referencia:
+          type: integer
+        indice_socioeconomico:
+          type: number
+          format: float
+          nullable: true
+        renda_media_mensal:
+          type: number
+          format: float
+          nullable: true
+        taxa_desemprego:
+          type: number
+          format: float
+          nullable: true
+        percentual_ensino_superior:
+          type: number
+          format: float
+          nullable: true
+        percentual_saneamento:
+          type: number
+          format: float
+          nullable: true
+        numero_estabelecimentos_comerciais:
+          type: integer
+          nullable: true
+        numero_escolas:
+          type: integer
+          nullable: true
+        numero_postos_saude:
+          type: integer
+          nullable: true
+        iluminacao_publica:
+          type: number
+          format: float
+          nullable: true
+        presenca_policial:
+          type: number
+          format: float
+          nullable: true
+        distancia_centro_km:
+          type: number
+          format: float
+          nullable: true
+        qualidade_transporte_publico:
+          type: number
+          format: float
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+        data_atualizacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - id_bairro
+      - ano_referencia
+    Pesquisa:
+      type: object
+      properties:
+        id_pesquisa:
+          type: integer
+          readOnly: true
+        id_complexo:
+          type: integer
+          nullable: true
+        id_bairro:
+          type: integer
+        data_pesquisa:
+          type: string
+          format: date
+        escolaridade:
+          type: string
+          enum:
+          - Fundamental Incompleto
+          - Fundamental Completo
+          - Médio Incompleto
+          - Médio Completo
+          - Superior Incompleto
+          - Superior Completo
+          - Pós-graduação
+          nullable: true
+        faixa_renda:
+          type: string
+          enum:
+          - Até 1 SM
+          - 1-3 SM
+          - 3-6 SM
+          - 6-9 SM
+          - Acima de 9 SM
+          nullable: true
+        zona_residencia_anterior:
+          type: string
+          nullable: true
+        motivo_escolha_moradia:
+          type: string
+          nullable: true
+        favoravel_normas_internas:
+          type: boolean
+          nullable: true
+        zona_mais_violenta:
+          type: string
+          nullable: true
+        concorda_controle_acesso:
+          type: boolean
+          nullable: true
+        realiza_compras_local:
+          type: boolean
+          nullable: true
+        interesse_mudanca:
+          type: boolean
+          nullable: true
+        data_criacao:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - id_bairro
+      - data_pesquisa
