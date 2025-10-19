@@ -1,6 +1,10 @@
 Rails.application.routes.draw do
   mount Rswag::Ui::Engine => '/api-docs'
   mount Rswag::Api::Engine => '/api-docs'
+
+  # Action Cable endpoint
+  mount ActionCable.server => '/cable'
+
   # Health check
   get "up" => "rails/health#show", as: :rails_health_check
 
@@ -17,6 +21,12 @@ Rails.application.routes.draw do
       resources :tipos_crime
       resources :usuarios
       resources :zonas
+
+      # Rotas de notificações
+      post "notifications/broadcast", to: "notifications#broadcast"
+      post "notifications/sistema", to: "notifications#sistema"
+      post "notifications/test", to: "notifications#test"
+      get "notifications/status", to: "notifications#status"
     end
   end
 
