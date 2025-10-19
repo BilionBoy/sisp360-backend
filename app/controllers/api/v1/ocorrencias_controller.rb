@@ -56,6 +56,9 @@ module Api
         @ocorrencia = Ocorrencia.new(ocorrencia_params)
 
         if @ocorrencia.save
+          # Enviar notificação em tempo real
+          NotificationsService.broadcast_ocorrencia_criada(@ocorrencia)
+
           render json: @ocorrencia, status: :created
         else
           render json: @ocorrencia.errors, status: :unprocessable_entity
@@ -64,7 +67,23 @@ module Api
 
       # PATCH/PUT /api/v1/ocorrencias/:id
       def update
+        # Capturar o status anterior para detectar mudanças
+        status_anterior = @ocorrencia.status_ocorrencia
+
         if @ocorrencia.update(ocorrencia_params)
+          # Detectar mudanças e enviar notificação apropriada
+          if status_anterior != @ocorrencia.status_ocorrencia
+            if @ocorrencia.status_ocorrencia == "Resolvida"
+              NotificationsService.broadcast_ocorrencia_finalizada(@ocorrencia)
+            else
+              NotificationsService.broadcast_ocorrencia_atualizada(@ocorrencia, {
+                status: { from: status_anterior, to: @ocorrencia.status_ocorrencia }
+              })
+            end
+          else
+            NotificationsService.broadcast_ocorrencia_atualizada(@ocorrencia)
+          end
+
           render json: @ocorrencia
         else
           render json: @ocorrencia.errors, status: :unprocessable_entity
@@ -73,7 +92,15 @@ module Api
 
       # DELETE /api/v1/ocorrencias/:id
       def destroy
+        # Salvar informações antes de deletar
+        ocorrencia_id = @ocorrencia.id_ocorrencia
+        numero_bo = @ocorrencia.numero_bo
+
         @ocorrencia.destroy!
+
+        # Enviar notificação de remoção
+        NotificationsService.broadcast_ocorrencia_removida(ocorrencia_id, numero_bo)
+
         head :no_content
       end
 
