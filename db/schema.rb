@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 0) do
+ActiveRecord::Schema[7.2].define(version: 2025_10_19_064218) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -157,11 +157,19 @@ ActiveRecord::Schema[7.2].define(version: 0) do
     t.index "point((longitude_ocorrencia)::double precision, (latitude_ocorrencia)::double precision)", name: "idx_ocorrencias_geom", using: :gist
     t.index "to_tsvector('portuguese'::regconfig, descricao_ocorrencia)", name: "idx_ocorrencias_descricao_fts", using: :gin
     t.index ["data_ocorrencia"], name: "idx_ocorrencias_data"
+    t.index ["data_ocorrencia"], name: "index_ocorrencias_on_data_ocorrencia"
     t.index ["id_bairro", "data_ocorrencia"], name: "idx_ocorrencias_bairro_data"
+    t.index ["id_bairro", "data_ocorrencia"], name: "index_ocorrencias_on_bairro_and_data"
+    t.index ["id_bairro"], name: "index_ocorrencias_on_id_bairro"
     t.index ["id_tipo_crime", "data_ocorrencia"], name: "idx_ocorrencias_tipo_data"
+    t.index ["id_tipo_crime", "data_ocorrencia"], name: "index_ocorrencias_on_tipo_crime_and_data"
+    t.index ["id_tipo_crime"], name: "index_ocorrencias_on_id_tipo_crime"
     t.index ["latitude_ocorrencia", "longitude_ocorrencia"], name: "idx_ocorrencias_coordenadas"
+    t.index ["numero_bo"], name: "index_ocorrencias_on_numero_bo"
     t.index ["periodo_dia"], name: "idx_ocorrencias_periodo"
+    t.index ["periodo_dia"], name: "index_ocorrencias_on_periodo_dia"
     t.index ["status_ocorrencia"], name: "idx_ocorrencias_status"
+    t.index ["status_ocorrencia"], name: "index_ocorrencias_on_status_ocorrencia"
     t.unique_constraint ["numero_bo"], name: "ocorrencias_numero_bo_key"
   end
 

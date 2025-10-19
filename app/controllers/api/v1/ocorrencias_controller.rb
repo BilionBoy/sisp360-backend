@@ -15,14 +15,20 @@ module Api
         records = apply_filters(records)
 
         # Paginação Pagy usando a chave primária correta
-@pagy, @ocorrencias = pagy(records.order(:id_ocorrencia))
+        # Aceita ?items=X ou ?per_page=X, com limite máximo de 1000
+        limit = [params[:items].to_i, params[:per_page].to_i, 25].max
+        limit = [limit, 1000].min  # Máximo de 1000 registros por página
+
+        # Usar contagem aproximada para melhor performance
+        # Para queries grandes, usa estatísticas do PostgreSQL
+        @pagy, @ocorrencias = pagy(records.order(:id_ocorrencia), limit: limit, count: get_fast_count(records))
 
         render json: {
           current_page: @pagy.page,
           per_page: @pagy.limit,
           total_pages: @pagy.pages,
           total_count: @pagy.count,
-          ocorrencias: ActiveModelSerializers::SerializableResource.new(@ocorrencias)
+          ocorrencias: @ocorrencias.as_json
         }
       end
 
@@ -99,6 +105,24 @@ module Api
           records = records.where(field => params[field]) if params[field].present?
         end
         records
+      end
+
+      # Conta registros de forma otimizada
+      # Usa contagem exata para queries pequenas ou com filtros
+      # Usa contagem aproximada (estatísticas do PG) para queries grandes sem filtros
+      def get_fast_count(records)
+        # Se houver filtros aplicados, usar contagem exata (será mais rápida com índices)
+        if params.keys.any? { |k| %w[numero_bo id_tipo_crime id_bairro data_ocorrencia periodo_dia status_ocorrencia].include?(k) }
+          return records.count
+        end
+
+        # Para queries sem filtros, usar contagem aproximada do PostgreSQL
+        # Isso é MUITO mais rápido para tabelas grandes
+        Rails.cache.fetch("ocorrencias_total_count", expires_in: 1.hour) do
+          Ocorrencia.connection.execute(
+            "SELECT reltuples::bigint AS estimate FROM pg_class WHERE relname='ocorrencias'"
+          )[0]["estimate"].to_i
+        end
       end
     end
   end
