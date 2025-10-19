@@ -13,7 +13,7 @@ module Api
         records = apply_filters(records)
 
         limit = [params[:items].to_i, params[:per_page].to_i, 25].max
-        limit = [limit, 1000].min
+        limit = [limit, 5000].min
 
         cache_key = generate_cache_key(limit)
 

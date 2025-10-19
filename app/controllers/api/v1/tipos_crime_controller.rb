@@ -14,7 +14,7 @@ module Api
 
         # Dynamic limit with max 1000
         limit = [params[:items].to_i, params[:per_page].to_i, 25].max
-        limit = [limit, 1000].min
+        limit = [limit, 5000].min
 
         # Generate cache key
         cache_key = generate_cache_key(limit)

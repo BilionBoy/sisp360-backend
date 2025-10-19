@@ -15,9 +15,9 @@ module Api
         records = apply_filters(records)
 
         # Paginação Pagy usando a chave primária correta
-        # Aceita ?items=X ou ?per_page=X, com limite máximo de 1000
+        # Aceita ?items=X ou ?per_page=X, com limite máximo de 5000
         limit = [params[:items].to_i, params[:per_page].to_i, 25].max
-        limit = [limit, 1000].min  # Máximo de 1000 registros por página
+        limit = [limit, 5000].min  # Máximo de 5000 registros por página
 
         # Gerar chave de cache baseada nos parâmetros da request
         cache_key = generate_cache_key(limit)
